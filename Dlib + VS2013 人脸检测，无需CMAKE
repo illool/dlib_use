@@ -1,0 +1,125 @@
+http://blog.csdn.net/shuzfan/article/details/52149882
+
+这里介绍如何快速上手使用Dlib进行人脸检测，无需CMAKE编译。
+（1）下载并解压Dlib
+
+下载链接 http://dlib.net/
+（2）设置环境变量
+
+此步可以省略，不过后面就需要写全路径了。
+
+新建环境变量：
+DLIB = C:\Program Files\dlib-19.0\，其中“C:\Program Files\dlib-19.0”是我的解压目录
+（3）建立VS2013空项目
+3.1 设置包含目录
+
+右键项目工程->属性->C/C++->常规->附加包含目录
+
+包含目录
+
+如果没有像我一样设置环境变量的话，就需要把上面的$(DLIB)替换成你的解压目录。
+3.2 设置预处理器定义
+
+这里是为了添加对JPG和PNG图片的支持。
+右键项目工程->属性->C/C++->预处理器->预处理器定义
+
+预处理器定义
+3.3 设置库目录
+
+右键项目工程->属性->链接器->常规->附加库目录
+
+库目录
+3.4 添加源文件
+
+只需要添加两个源文件：
+
+dlib\all\source.cpp
+examples\face_detection_ex.cpp
+
+    1
+    2
+
+3.5 关闭SDL检查
+
+当SDL检查启用时，编译器会严格检测缓冲区的溢出，这将导致一些函数编译失败。
+
+项目属性->配置属性->C/C++->SDL检查，选测否。
+3.5 添加资源文件
+
+添加资源文件
+
+将下面三个文件夹下的所有文件添加到资源文件中
+
+dlib\external\libjpeg
+dlib\external\libpng
+dlib\external\zlib
+
+    1
+    2
+    3
+
+（4）批量检测人脸并存储结果
+
+下面是我的主函数，用来从TXT中批量读取图片路径并记录检测结果。
+
+
+#include <dlib/image_processing/frontal_face_detector.h>
+#include <dlib/gui_widgets.h>
+#include <dlib/image_io.h>
+#include <iostream>
+#include <fstream>
+
+using namespace dlib;
+using namespace std;
+
+// ----------------------------------------------------------------------------------------
+
+int main()
+{
+    string root_folder = "F:\\CVLAB_DB\\dataset_std\\";
+    string file_list = "train_list.txt";
+    ifstream infile(file_list);
+    string filename;
+    // creat a detector
+    frontal_face_detector detector = get_frontal_face_detector();
+    // store the result
+    std::vector<rectangle> dets;
+
+    //write the result to a txt-file
+    ofstream outfile("result.txt", 'w');
+    int out_num = 0;
+    while (infile >> filename) {
+        //the full path of current image
+        filename = root_folder + filename;
+        //read the image
+        array2d<unsigned char> img;
+        load_image(img, filename);
+        //up-sample the image to detect smaller face
+        pyramid_up(img); // 40*40
+        dets = detector(img);
+        out_num++;
+        if (!dets.empty())
+        {
+            outfile << out_num << "\t" << dets[0].left() << "\t" << dets[0].top() << "\t" <<
+                dets[0].right() - dets[0].left() << "\t" << dets[0].bottom() - dets[0].top() << endl;
+            cout << "image = " << out_num << " , detect " << dets.size() << " faces"<<endl;
+        }
+        else
+            cout << "image = " << out_num << " , no faces"<<endl;
+
+        if (0)
+        {
+            image_window win;
+            cout << "Number of faces detected: " << dets.size() << endl;
+            // Now we show the image on the screen and the face detections as
+            // red overlay boxes.
+            win.clear_overlay();
+            win.set_image(img);
+            win.add_overlay(dets, rgb_pixel(255, 0, 0));
+            cout << "Hit enter to process the next image..." << endl;
+            cin.get();
+        }
+
+    }
+    outfile.close();           
+}
