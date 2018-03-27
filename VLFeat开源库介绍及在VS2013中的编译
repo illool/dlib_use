@@ -1,0 +1,53 @@
+	VLFeat是一个开源的计算机视觉算法库，内容主要包括feature detectors、feature extractors、k-means clustering、randomized kd-tree matching、super-pixelization。它是跨平台的，能够应用在Linux、Mac、Windows平台。它的License是BSD。
+
+ 	在VS2013中编译VLFeat源码操作步骤：
+
+	1.      从http://www.vlfeat.org/ 下载源码(或从https://github.com/vlfeat/vlfeat下载)，最新版本为0.9.20；
+
+	2.      打开VS2013 x64本机工具命令提示，在命令行中输入：$ nmake version，如下图：
+
+
+	3.      在make/nmake_helper.mak文件中加入vs2013参数，如下图：
+
+
+	4.      将VS2013 x64本机工具命令提示定位到/vlfeat-0.9.20目录下，输入：
+
+[plain] view plain copy
+
+    $ nmake /f Makefile.mak  
+
+	5.      运行完上面的语句后，将会在/vlfeat-0.9.20/bin目录下，新增一个win64目录，里面会有生成的vl.dll、vl.lib和一些test执行文件；
+
+	6.      按照上面的步骤虽然生成了vlfeat动态库，但是不便于调试，下面新建一个控制台工程VLFeat_DLL，将/vlfeat-0.9.20/vl目录中的文件加入到VLFeat_DLL工程中；
+
+	7.      将VLFeat_DLL工程，配置属性中的配置类型由应用程序(.exe)改为动态库(.dll)；字符集由使用Unicode字符集改为使用多字节字符集；
+
+	8.      遇到的问题及处理方法：
+
+	(1)、error C2491，不允许dllimport函数的定义：将宏VL_BUILD_DLL加入到预处理器定义中；
+
+	(2)、error C4996：将宏_CRT_SECURE_NO_WARNINGS加入到预处理器定义中；
+
+	(3)、三个类似的错误，fatal error C1189: #error : "Compiling with SSE2 enabled, …”：分别将三个宏 __SSE2__、_SSE2_、__AVX__加入到预处理器定义中；
+
+	(4)、六个类似的错误，error C4146 一元负运算符应用于无符号类型，结果仍为无符号类型：将C/C++--> 常规--> SDL检查改为否(/sdl-)。
+
+	9.      重新编译整个工程即可生成VLFeat_DLL.dll；
+
+	10.    验证VLFeat_DLL.dll动态库的正确性：新添加一个Test_VLFeat控制台工程，测试代码及结果图如下：
+
+[cpp] view plain copy
+
+    #include <iostream>  
+    #include <generic.h>  
+      
+    int main()  
+    {  
+        VL_PRINT("Hello world!\n");  
+      
+        std::cout << "ok!" << std::endl;  
+        return 0;  
+    }  
+
+
+	GitHub：https://github.com/fengbingchun/VLFeat-VS2013
