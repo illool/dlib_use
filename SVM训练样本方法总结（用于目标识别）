@@ -1,0 +1,175 @@
+SVM样本训练步骤
+
+尊重原创，转载本文请说明出处：http://blog.csdn.net/xw20084898/article/details/21389885
+1、引言
+近期在做飞形体目标识别的研究，需要做SVM训练来生成识别的分类器。从网上找了大量的参考文章，但是发现很多文章都讲的比较零散。鉴于此原因，本文对SVM训练过程做一个较为系统的总结，希望对广大初学者有所帮助。
+2、步骤
+（1）生成SVM描述文件；
+将需要训练的样本文件的路径和对应的分类类别号写入txt文档，如：
+plane/飞机训练正样本Normalize/0.jpg
+1
+plane/飞机训练正样本Normalize/1.jpg            命名为：SVM_DATA.txt
+1
+（2）将描述文件读入容器中；
+
+定义两个容器，用于保存样本路径和分类标号，如：
+
+ vector<string> img_path;  
+
+         vector<int> img_catg;  
+
+读入数据：
+
+         int nLine = 0;  
+
+   string buf;  
+
+   ifstream svm_data( "SVM_DATA.txt" ); 
+
+[cpp] view plain copy
+ 在CODE上查看代码片派生到我的代码片
+
+     while( svm_data )    
+            {    
+                if( getline( svm_data, buf) )   
+            /*原型 
+    　　istream& getline ( istream &is , string &str , char delim ); 　　istream& getline ( istream& , string& ); 
+    参数  is 进行读入操作的输入流 　　str 存储读入的内容 　　delim 终结符    返回值 与参数is是一样的 
+    功能  将输入流is中读到的字符存入str中，直到遇到终结符delim才结束。 
+      对于第一个函数delim是可以由用户自己定义的终结符；对于第二个函数delim默认为 '\n'（换行符）。 　　 
+      函数在输入流is中遇到文件结束符（EOF）或者在读入字符的过程中遇到错误都会结束。 　　 
+      在遇到终结符delim后，delim会被丢弃，不存入str中。在下次读入操作时，将在delim的下个字符开始读入。*/   
+                {    
+                nLine ++;    
+                if( nLine % 2 == 0 )    
+                    {    
+                         img_catg.push_back( atoi( buf.c_str() ) );//atoi将字符串转换成整型，值为0或1  用0,1区分正负样本  
+                         //功 能： 把字符串转换成整型数。 　　名字来源：array to integer 的缩写。 　　  
+                         //原型： int atoi(const char *nptr); 　　  
+    //函数说明: 参数nptr字符串，如果第一个非空格字符不存在或者不是数字也不是正负号则返回零，否则开始做类型转换，  
+    //之后检测到非数字(包括结束符 \0) 字符时停止转换，返回整型数。   
+                        // 函数声明：const char *c_str(); 　　c_str()函数返回一个指向正规C字符串的指针, 内容与本string串相同.   
+                }    
+                else    
+                    {    
+                    img_path.push_back( buf );//图像路径     
+                    }    
+                }    
+            }    
+            svm_data.close();//关闭文件     
+
+（3）读入样本数量，生成样本矩阵和类型矩阵
+
+[cpp] view plain copy
+ 在CODE上查看代码片派生到我的代码片
+
+    CvMat *data_mat, *res_mat;    
+            int nImgNum = nLine / 2;            //读入样本数量     
+        ////样本矩阵，nImgNum：横坐标是样本数量， WIDTH * HEIGHT：样本特征向量，即图像大小     
+            data_mat = cvCreateMat( nImgNum, 144, CV_32FC1 );    
+            cvSetZero( data_mat );    
+            //类型矩阵,存储每个样本的类型标志     
+            res_mat = cvCreateMat( nImgNum, 1, CV_32FC1 );    
+            cvSetZero( res_mat );    
+
+（4）读入样本图像
+
+[cpp] view plain copy
+ 在CODE上查看代码片派生到我的代码片
+
+    IplImage* src;    
+        IplImage* trainImg=cvCreateImage(cvSize(64,64),8,3);//需要分析的图片  
+          
+       
+        for( string::size_type z = 0; z != img_path.size(); z++ )    //整体循环为z  
+        {    
+               src=cvLoadImage(img_path[z].c_str(),1);   
+            // 函数声明：const char *c_str();c_str()函数返回一个指向正规C字符串的指针, 内容与本string串相同.    
+                if( src == NULL )    
+                {    
+                    cout<<" can not load the image: "<<img_path[z].c_str()<<endl;    
+                   continue;    
+                }    
+        
+                cout<<" processing "<<img_path[z].c_str()<<endl;    
+
+（5）提取HOG特征
+
+[cpp] view plain copy
+ 在CODE上查看代码片派生到我的代码片
+
+     //以下为提取Hog特征  
+                   cvResize(src,trainImg);   //读取图片，归一化大小        
+                   HOGDescriptor *hog=new HOGDescriptor(cvSize(64,64),cvSize(16,16),cvSize(16,16),cvSize(16,16),9);    
+      
+                    vector<float>descriptors;//结果数组        
+                    hog->compute(trainImg, descriptors,Size(8,8), Size(0,0)); //调用计算函数开始计算        
+                    cout<<"HOG dims: "<<descriptors.size()<<endl;    
+                    //CvMat* SVMtrainMat=cvCreateMat(descriptors.size(),1,CV_32FC1);     
+                    n=0;    
+                    for(vector<float>::iterator iter=descriptors.begin();iter!=descriptors.end();iter++)    //迭代器  
+                    {    
+                    cvmSet(data_mat,z,n,*iter);   //将HOG特征 存入data_mat矩阵中  
+    x=cvmGet(data_mat,z,n);  
+    cout<<"hog"<<x<<endl;  
+                        n++;    
+                    }  
+
+（6）将HOG特征写入txt文件
+[cpp] view plain copy
+ 在CODE上查看代码片派生到我的代码片
+
+    FILE *fp1;  
+        int i,j;  
+        if((fp1=fopen("Hog.txt","ab"))==NULL)// 读写打开一个二进制文件，允许读或在文件末追加数据。  
+        {  
+            printf("can not open the hu file\n");  
+            exit(0);//正常退出程序  
+        }  
+        for (i = 0; i <144; ++i)   
+        {  
+            fprintf(fp1,"%lf ",descriptors[i]);   
+        }  
+            //fprintf(fp1,"\r\n");  
+        fclose(fp1);  
+      
+                    cvmSet( res_mat, z, 0, img_catg[z] );   //将正负样本标记存入矩阵res_mat中  
+                    cout<<" end processing "<<img_path[z].c_str()<<" "<<img_catg[z]<<endl;    
+        }    
+
+（7）进行SVM训练
+[cpp] view plain copy
+ 在CODE上查看代码片派生到我的代码片
+
+    CvSVM svm = CvSVM();      
+        CvSVMParams param;      
+        CvTermCriteria criteria;      
+           criteria = cvTermCriteria( CV_TERMCRIT_EPS, 1000, FLT_EPSILON );      
+        param = CvSVMParams( CvSVM::C_SVC, CvSVM::RBF, 10.0, 0.09, 1.0, 10.0, 0.5, 1.0, NULL, criteria );      
+    /*     
+        SVM种类：CvSVM::C_SVC     
+        Kernel的种类：CvSVM::RBF     
+        degree：10.0（此次不使用）     
+        gamma：8.0     
+       coef0：1.0（此次不使用）     
+        C：10.0     
+        nu：0.5（此次不使用）     
+       p：0.1（此次不使用）     
+       然后对训练数据正规化处理，并放在CvMat型的数组里。     
+                                                            */         
+        //SVM学习          
+        svm.train( data_mat, res_mat, NULL, NULL, param );      
+        //利用训练数据和确定的学习参数,进行SVM学习        
+        svm.save( "SVM_DATA1.xml" );     
+      
+        cvReleaseImage(&src);  
+        cvReleaseMat( &data_mat );   
+        cvReleaseMat( &res_mat );    
+         return 0;  
+
+
+在以上训练过程中，要特别注意的是在创建样本矩阵的时候，其矩阵大小由样本数量和样本提取的特征维数决定的。比如上面创建的样本矩阵大小为：
+[cpp] view plain copy
+ 在CODE上查看代码片派生到我的代码片
+
+    int nImgNum = nLine / 2; 行，144列；  144是由提取HOG特征时，由窗口大小、块大小、胞元大小和每个抱怨大小中的特征数共同决定的。  
