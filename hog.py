@@ -80,3 +80,21 @@ for x in range(cell_gradient.shape[0]):
 
 plt.imshow(hog_image, cmap ='gray')
 plt.show()
+
+# fifth part
+hog_vector = []
+for i in range(cell_gradient_vector.shape[0] - 1):
+    for j in range(cell_gradient_vector.shape[1] - 1):
+        block_vector = []
+        block_vector.extend(cell_gradient_vector[i][j])
+        block_vector.extend(cell_gradient_vector[i][j + 1])
+        block_vector.extend(cell_gradient_vector[i + 1][j])
+        block_vector.extend(cell_gradient_vector[i + 1][j + 1])
+        mag = lambda vector: math.sqrt(sum(i ** 2 for i in vector))
+        magnitude = mag(block_vector)
+        if magnitude != 0:
+            normalize = lambda block_vector, magnitude: [element / magnitude for element in block_vector]
+            block_vector = normalize(block_vector, magnitude)
+        hog_vector.append(block_vector)
+
+print(np.array(hog_vector).shape)
